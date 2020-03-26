@@ -1,0 +1,29 @@
+{
+  "name": "wb-dbjunction",
+  "version": "0.1.0",
+  "description": "Coordinator for WB blockchain, ElasticSearch DB and client requests",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "tsc",
+    "prestart": "npm run build",
+    "start": "node .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "nodemon"
+  },
+  "author": "The Wallablock team",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/express": "^4.17.3",
+    "nodemon": "^2.0.2",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "wb-blockchain": "file:../wb-blockchain"
+  },
+  "nodemonConfig": {
+    "ext": "ts,js",
+    "watch": "src/",
+    "exec": "npm start"
+  }
+}
