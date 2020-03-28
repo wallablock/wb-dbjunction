@@ -2,6 +2,7 @@
   "name": "wb-dbjunction",
   "version": "0.1.0",
   "description": "Coordinator for WB blockchain, ElasticSearch DB and client requests",
+  "private": true,
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
