@@ -1,11 +1,12 @@
 import { Blockchain } from "wb-blockchain";
+import { Config } from "../config";
 
-export function startSyncer() {
-    asyncStartSyncer();
+export function startSyncer(config: Config) {
+    asyncStartSyncer(config);
 }
 
-async function asyncStartSyncer() {
-    let blockchain = new Blockchain();
+async function asyncStartSyncer(config: Config) {
+    let blockchain = new Blockchain(config.ethereumNode);
     let syncedUntil = await getLastBlock();
     let syncUpdates = await blockchain.resync((syncedUntil != null) ? syncedUntil : undefined);
     // Process syncUpdates

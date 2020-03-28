@@ -1,3 +1,5 @@
 import { startSyncer } from "./syncer";
+import { getConfigFromEnv } from "./config";
 
-startSyncer();
+const config = getConfigFromEnv();
+startSyncer(config);
