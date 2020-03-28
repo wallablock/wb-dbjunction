@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@elastic/elasticsearch": "^7.6.1",
-    "express": "^4.17.1",
     "wb-blockchain": "file:../wb-blockchain"
   },
   "nodemonConfig": {
