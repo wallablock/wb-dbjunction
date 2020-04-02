@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@elastic/elasticsearch": "^7.6.1",
-    "wb-blockchain": "file:../wb-blockchain"
+    "wb-blockchain": "git+https://github.com/wallablock/wb-blockchain.git"
   },
   "nodemonConfig": {
     "ext": "ts,js",

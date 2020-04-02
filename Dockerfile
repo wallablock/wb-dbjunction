@@ -18,8 +18,9 @@ COPY --from=builder package.json package-lock.json dist/ ./
 RUN apk add --no-cache tini
 # {python, make, g++} temporarily installed to allow compilation of
 # C++ extensions (e.g.: Ethereum hash algorithms have an optimized C++ version)
-RUN apk add --no-cache --virtual .gyp python make g++ \
+# Git is needed to download Wallablock dependencies (wb-blockchain, wb-contracts)
+RUN apk add --no-cache --virtual .builddeps python make g++ git \
     && npm ci --only=production \
-    && apk del .gyp
+    && apk del .builddeps
 ENTRYPOINT [ "/sbin/tini", "--" ]
 CMD [ "node", "dist/app.js" ]
