@@ -37,21 +37,9 @@ async function asyncStartSyncer(config: Config) {
     // Process syncUpdates
     const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
 
-    // const accepted = syncUpdates[2].flatMap(doc => [{ index: { _index: 'offers', _id : doc.id } }, doc])
-    // const { accepted: bulkResponse1 } = await client.bulk({ refresh: true, accepted })
-    // if (bulkResponse1.errors) controlDeErrores(accepted, bulkResponse1)
     const accepted = syncUpdates.createdContracts.flatMap(doc => [{ index: { _index: 'offers', _id : doc.offer } }, doc]);
     const { body: bulkResponse1 } = await client.bulk({ refresh: 'true', body: accepted });
     if (bulkResponse1.errors) controlDeErrores(accepted, bulkResponse1);
-
-    // const completed = syncUpdates.completedContracts.flatMap(doc => [{ delete: { _index: 'offers', _id : doc.offer } }])
-    // const { completed: bulkResponse2 } = await client.bulk({ refresh: true, completed })
-    // if(bulkResponse2.errors) controlDeErrores(completed, bulkResponse2)
-
-    // const cancelled = syncUpdates[4].flatMap(doc => [{ delete: { _index: 'offers', _id : doc.id } }])
-    // const { cancelled: bulkResponse3 } = await client.bulk({ refresh: true, cancelled })
-    // if (bulkResponse3.errors) controlDeErrores(cancelled, bulkResponse3)
-    //const cancelled = syncUpdates.cancelledContracts.flatMap(doc => [{ delete: { _index: 'offers', _id : doc.offer } }]);
 
     const to_be_deleted: (CompletedEvent | CancelledEvent)[] =
       syncUpdates.completedContracts.concat(syncUpdates.cancelledContracts);
@@ -59,7 +47,47 @@ async function asyncStartSyncer(config: Config) {
     const { body: bulkResponse2 } = await client.bulk({ refresh: 'true', body: deleted});
     if (bulkResponse2.errors) controlDeErrores(deleted, bulkResponse2);
 
-    // Set callbacks
+}
+
+async function createOffer (index: string, id : string, body: any ) {
+
+  const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
+
+  await client.index({
+    index, 
+    id, 
+    body
+  })
+
+  console.log(body._source.firstname)
+
+}
+
+async function updateOffer (index: string, id : string, body: any ) {
+
+  const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
+
+  await client.update({
+    index, 
+    id, 
+    body
+  })
+
+  console.log(body._source.firstname)
+
+}
+
+async function completedOffer (index: string, id : string) {
+
+  const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
+  
+  const { body } = await client.delete({
+    index,
+    id,
+  })
+
+  console.log("Completed.")
+
 }
 
 async function getLastBlock(): Promise<string | number | null> {
@@ -69,7 +97,6 @@ async function getLastBlock(): Promise<string | number | null> {
         index: 'block',
         id: '1'
     })
-
     return body.lastblock
 }
 
