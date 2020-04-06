@@ -11,7 +11,7 @@ export interface DbEntry {
 
 export interface DbUpdate {
     offer: string,
-    sellfer?: string,
+    seller?: string,
     title?: string,
     price?: string,
     category?: string,

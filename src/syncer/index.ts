@@ -1,6 +1,7 @@
 import { Blockchain, CompletedEvent, CancelledEvent, CreatedEvent, ChangedEvent } from "wb-blockchain";
 import { Config } from "../config";
 import { Client } from "@elastic/elasticsearch";
+import { DbEntry, DbUpdate } from "./db-interface";
 
 export function startSyncer(config: Config, dieOnFail: boolean = true) {
     (new Syncer(config)).start()
@@ -50,7 +51,7 @@ class Syncer {
   private async handleCreated(created: CreatedEvent[]) {
     let body = [];
     for (let event of created) {
-      body.push({ index: { _index: 'offers', _id: event.offer }}, event);
+      body.push({ index: { _index: 'offers', _id: event.offer }}, this.createdToDbEntry(event));
     }
     const { body: response } = await this.client.bulk({ refresh: 'true', body });
     if (response.errors) {
@@ -61,7 +62,7 @@ class Syncer {
   private async handleChanged(changed: ChangedEvent[]) {
     let body = [];
     for (let event of changed) {
-      body.push({ index: { _index: 'offers', _id: event.offer }}, event);
+      body.push({ index: { _index: 'offers', _id: event.offer }}, this.changedToDbUpdate(event));
     }
     const { body: response } = await this.client.bulk({ refresh: 'true', body });
     if (response.errors) {
@@ -78,6 +79,36 @@ class Syncer {
     if (response.errors) {
       this.onElasticBulkError(body, response);
     }
+  }
+
+  /**
+   * Convert a creation event to a DbEntry, without any extra property.
+   * @param entry Original event
+   */
+  private createdToDbEntry(entry: CreatedEvent): DbEntry {
+    return {
+      offer: entry.offer,
+      seller: entry.seller,
+      title: entry.title,
+      price: entry.price,
+      category: entry.category,
+      shipsFrom: entry.shipsFrom,
+      bought: false
+    };
+  }
+
+  /**
+   * Convert a change event to a DbUpdate, without any extra property.
+   * @param entry Original event
+   */
+  private changedToDbUpdate(entry: ChangedEvent): DbUpdate {
+    return {
+      offer: entry.offer,
+      title: entry.title,
+      price: entry.price,
+      category: entry.category,
+      shipsFrom: entry.shipsFrom
+    };
   }
 
   private onElasticBulkError(body: any, bulkResponse: any): never {
