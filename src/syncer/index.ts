@@ -37,11 +37,11 @@ class Syncer {
   }
 
   private async getLastBlock(): Promise<number | string | null> {
-    const { body } = await this.client.get({
+    const { body: { lastBlock: lb } } = await this.client.get({
       index: 'block',
       id: '1'
     });
-    return body.lastBlock
+    return lb
   }
 }
 

@@ -7,7 +7,7 @@ export interface Config {
 
 const DEFAULT_CONFIG: Config = {
     ethereumNode: "ws://localhost:8545",
-    elasticUrl: "https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/",
+    elasticUrl: "https://f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/",
     elasticUsername: "sync",
     // BUG: Yes, I'm fully aware that we have the password here in plain text.
     // This will be fixed for the final release
