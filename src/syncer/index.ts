@@ -1,4 +1,4 @@
-import { Blockchain, CompletedEvent, CancelledEvent, CreatedEvent, ChangedEvent } from "wb-blockchain";
+import { Blockchain, CompletedEvent, CancelledEvent, CreatedEvent, ChangedEvent, BoughtEvent } from "wb-blockchain";
 import { Config } from "../config";
 import { Client } from "@elastic/elasticsearch";
 import { DbEntry, DbUpdate } from "./db-interface";
@@ -34,6 +34,7 @@ class Syncer {
 
     await this.handleCreated(await syncUpdates.createdContracts);
     await this.handleChanged(await syncUpdates.changedContracts);
+    await this.handleBought(await syncUpdates.boughtContracts);
     await this.handleDeleted(
       await syncUpdates.completedContracts,
       await syncUpdates.cancelledContracts
@@ -55,7 +56,7 @@ class Syncer {
     }
     const { body: response } = await this.client.bulk({ refresh: 'true', body });
     if (response.errors) {
-      this.onElasticBulkError(body, response)
+      this.onElasticBulkError(body, response);
     }
   }
 
@@ -66,7 +67,21 @@ class Syncer {
     }
     const { body: response } = await this.client.bulk({ refresh: 'true', body });
     if (response.errors) {
-      this.onElasticBulkError(body, response)
+      this.onElasticBulkError(body, response);
+    }
+  }
+
+  private async handleBought(bought: BoughtEvent[]) {
+    let body = [];
+    for (let event of bought) {
+      body.push({ index: { _index: 'offers', _id: event.offer }}, {
+        bought: true,
+        buyer: event.buyer
+      });
+    }
+    const { body: response } = await this.client.bulk({ refresh: 'true', body });
+    if (response.errors) {
+      this.onElasticBulkError(body, response);
     }
   }
 
