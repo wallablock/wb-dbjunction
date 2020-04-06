@@ -1,7 +1,6 @@
-import { Blockchain } from "wb-blockchain";
+import { Blockchain, CompletedEvent, CancelledEvent, CreatedEvent, ChangedEvent } from "wb-blockchain";
 import { Config } from "../config";
 import { Client } from "@elastic/elasticsearch";
-import { CompletedEvent, CancelledEvent, CreatedEvent } from "wb-blockchain/dist/events";
 
 export function startSyncer(config: Config, dieOnFail: boolean = true) {
     (new Syncer(config)).start()
@@ -33,7 +32,7 @@ class Syncer {
     let syncUpdates = this.blockchain.resync((syncedUntil != null) ? syncedUntil : undefined);
 
     await this.handleCreated(await syncUpdates.createdContracts);
-
+    await this.handleChanged(await syncUpdates.changedContracts);
     await this.handleDeleted(
       await syncUpdates.completedContracts,
       await syncUpdates.cancelledContracts
@@ -51,6 +50,17 @@ class Syncer {
   private async handleCreated(created: CreatedEvent[]) {
     let body = [];
     for (let event of created) {
+      body.push({ index: { _index: 'offers', _id: event.offer }}, event);
+    }
+    const { body: response } = await this.client.bulk({ refresh: 'true', body });
+    if (response.errors) {
+      this.onElasticBulkError(body, response)
+    }
+  }
+
+  private async handleChanged(changed: ChangedEvent[]) {
+    let body = [];
+    for (let event of changed) {
       body.push({ index: { _index: 'offers', _id: event.offer }}, event);
     }
     const { body: response } = await this.client.bulk({ refresh: 'true', body });
