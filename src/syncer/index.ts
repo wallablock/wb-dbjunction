@@ -1,4 +1,4 @@
-import { Blockchain, CompletedEvent, CancelledEvent, CreatedEvent, ChangedEvent, BoughtEvent } from "wb-blockchain";
+import { Blockchain, CompletedEvent, CancelledEvent, CreatedEvent, ChangedEvent, BoughtEvent, BuyerRejectedEvent } from "wb-blockchain";
 import { Config } from "../config";
 import { Client } from "@elastic/elasticsearch";
 import { DbEntry, DbUpdate } from "./db-interface";
@@ -35,6 +35,7 @@ class Syncer {
     await this.handleCreated(await syncUpdates.createdContracts);
     await this.handleChanged(await syncUpdates.changedContracts);
     await this.handleBought(await syncUpdates.boughtContracts);
+    await this.handleBuyerRejected(await syncUpdates.buyerRejectedContracts);
     await this.handleDeleted(
       await syncUpdates.completedContracts,
       await syncUpdates.cancelledContracts
@@ -82,6 +83,21 @@ class Syncer {
     const { body: response } = await this.client.bulk({ refresh: 'true', body });
     if (response.errors) {
       this.onElasticBulkError(body, response);
+    }
+  }
+
+  private async handleBuyerRejected(buyerRejected: BuyerRejectedEvent[]) {
+    let body = [];
+    for (let event of buyerRejected) {
+      body.push({ index: { _index: 'offers', _id: event.offer }}, {
+        bought: false
+        // NOTE: The buyer will not be removed, but it shall not
+        // be consulted if bought is false.
+      })
+      const { body: response } = await this.client.bulk({ refresh: 'true', body });
+      if (response.errors) {
+        this.onElasticBulkError(body, response);
+      }
     }
   }
 
