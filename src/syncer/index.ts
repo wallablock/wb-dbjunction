@@ -33,20 +33,19 @@ function controlDeErrores(body: any, bulkResponse: any) {
 async function asyncStartSyncer(config: Config) {
     let blockchain = new Blockchain(config.ethereumNode);
     let syncedUntil = await getLastBlock();
-    let syncUpdates = await blockchain.resync((syncedUntil != null) ? syncedUntil : undefined);
+    let syncUpdates = blockchain.resync((syncedUntil != null) ? syncedUntil : undefined);
     // Process syncUpdates
     const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
 
-    const accepted = syncUpdates.createdContracts.flatMap(doc => [{ index: { _index: 'offers', _id : doc.offer } }, doc]);
+    const accepted = (await syncUpdates.createdContracts).flatMap(doc => [{ index: { _index: 'offers', _id : doc.offer } }, doc]);
     const { body: bulkResponse1 } = await client.bulk({ refresh: 'true', body: accepted });
     if (bulkResponse1.errors) controlDeErrores(accepted, bulkResponse1);
 
     const to_be_deleted: (CompletedEvent | CancelledEvent)[] =
-      syncUpdates.completedContracts.concat(syncUpdates.cancelledContracts);
+      (await syncUpdates.completedContracts).concat(await syncUpdates.cancelledContracts);
     const deleted = to_be_deleted.map(doc => Object.create({ delete: { _index: 'offers', _id: doc.offer }}));
     const { body: bulkResponse2 } = await client.bulk({ refresh: 'true', body: deleted});
     if (bulkResponse2.errors) controlDeErrores(deleted, bulkResponse2);
-
 }
 
 async function createOffer (index: string, id : string, body: any ) {
@@ -54,8 +53,8 @@ async function createOffer (index: string, id : string, body: any ) {
   const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
 
   await client.index({
-    index, 
-    id, 
+    index,
+    id,
     body
   })
 
@@ -68,8 +67,8 @@ async function updateOffer (index: string, id : string, body: any ) {
   const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
 
   await client.update({
-    index, 
-    id, 
+    index,
+    id,
     body
   })
 
@@ -80,7 +79,7 @@ async function updateOffer (index: string, id : string, body: any ) {
 async function completedOffer (index: string, id : string) {
 
   const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
-  
+
   const { body } = await client.delete({
     index,
     id,
