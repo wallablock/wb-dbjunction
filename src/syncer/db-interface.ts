@@ -8,3 +8,18 @@ export interface DbEntry {
     bought: boolean,
     buyer?: string
 }
+
+export interface DbUpdate {
+    offer: string,
+    sellfer?: string,
+    title?: string,
+    price?: string,
+    category?: string,
+    shipsFrom?: string,
+    bought?: boolean,
+    buyer?: string
+}
+
+export interface DbErase {
+    offer: string
+}

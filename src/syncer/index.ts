@@ -1,10 +1,16 @@
 import { Blockchain } from "wb-blockchain";
 import { Config } from "../config";
 import { Client } from "@elastic/elasticsearch";
-import { CompletedEvent, CancelledEvent } from "wb-blockchain/dist/events";
+import { CompletedEvent, CancelledEvent, CreatedEvent } from "wb-blockchain/dist/events";
 
-export function startSyncer(config: Config) {
+export function startSyncer(config: Config, dieOnFail: boolean = true) {
     (new Syncer(config)).start()
+      .catch(err => {
+        console.error("Fatal error syncing with the blockchain:", err);
+        if (dieOnFail) {
+          process.exit(1);
+        }
+      });
 }
 
 class Syncer {
@@ -25,15 +31,13 @@ class Syncer {
   public async start() {
     let syncedUntil = await this.getLastBlock();
     let syncUpdates = this.blockchain.resync((syncedUntil != null) ? syncedUntil : undefined);
-    const accepted = (await syncUpdates.createdContracts).flatMap(doc => [{ index: { _index: 'offers', _id : doc.offer } }, doc]);
-    const { body: bulkResponse1 } = await this.client.bulk({ refresh: 'true', body: accepted });
-    if (bulkResponse1.errors) controlDeErrores(accepted, bulkResponse1);
 
-    const to_be_deleted: (CompletedEvent | CancelledEvent)[] =
-      (await syncUpdates.completedContracts).concat(await syncUpdates.cancelledContracts);
-    const deleted = to_be_deleted.map(doc => Object.create({ delete: { _index: 'offers', _id: doc.offer }}));
-    const { body: bulkResponse2 } = await this.client.bulk({ refresh: 'true', body: deleted });
-    if (bulkResponse2.errors) controlDeErrores(deleted, bulkResponse2);
+    await this.handleCreated(await syncUpdates.createdContracts);
+
+    await this.handleDeleted(
+      await syncUpdates.completedContracts,
+      await syncUpdates.cancelledContracts
+    );
   }
 
   private async getLastBlock(): Promise<number | string | null> {
@@ -43,29 +47,50 @@ class Syncer {
     });
     return lb
   }
-}
 
-function controlDeErrores(body: any, bulkResponse: any) {
+  private async handleCreated(created: CreatedEvent[]) {
+    let body = [];
+    for (let event of created) {
+      body.push({ index: { _index: 'offers', _id: event.offer }}, event);
+    }
+    const { body: response } = await this.client.bulk({ refresh: 'true', body });
+    if (response.errors) {
+      this.onElasticBulkError(body, response)
+    }
+  }
 
-    const erroredDocuments: Array<any> = []
+  private async handleDeleted(completed: CompletedEvent[], cancelled: CancelledEvent[]) {
+    let body = [];
+    for (let event of [...completed, ...cancelled]) {
+      body.push({ delete: { _index: 'offers', _id: event.offer }});
+    }
+    const { body: response } = await this.client.bulk({ refresh: 'true', body });
+    if (response.errors) {
+      this.onElasticBulkError(body, response);
+    }
+  }
+
+  private onElasticBulkError(body: any, bulkResponse: any): never {
+    let erroredDocuments: any[] = [];
     // The items array has the same order of the dataset we just indexed.
     // The presence of the `error` key indicates that the operation
     // that we did for the document has failed.
     bulkResponse.items.forEach((action: any, i: any) => {
-      const operation = Object.keys(action)[0]
+      const operation = Object.keys(action)[0];
       if (action[operation].error) {
+        // If the status is 429 it means that you can retry the document,
+        // otherwise it's very likely a mapping error, and you should
+        // fix the document before to try it again.
         erroredDocuments.push({
-          // If the status is 429 it means that you can retry the document,
-          // otherwise it's very likely a mapping error, and you should
-          // fix the document before to try it again.
           status: action[operation].status,
           error: action[operation].error,
           operation: body[i * 2],
           document: body[i * 2 + 1]
-        })
+        });
       }
-    })
-    console.error(erroredDocuments)
+    });
+    throw erroredDocuments;
+  }
 }
 
 async function createOffer (index: string, id : string, body: any ) {
