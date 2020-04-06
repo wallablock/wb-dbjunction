@@ -4,7 +4,45 @@ import { Client } from "@elastic/elasticsearch";
 import { CompletedEvent, CancelledEvent } from "wb-blockchain/dist/events";
 
 export function startSyncer(config: Config) {
-    asyncStartSyncer(config);
+    (new Syncer(config)).start()
+}
+
+class Syncer {
+  private blockchain: Blockchain;
+  private client: Client;
+
+  constructor(config: Config) {
+    this.blockchain = new Blockchain(config.ethereumNode);
+    this.client = new Client({
+      node: config.elasticUrl,
+      auth: {
+        username: config.elasticUsername,
+        password: config.elasticPassword
+      }
+    });
+  }
+
+  public async start() {
+    let syncedUntil = await this.getLastBlock();
+    let syncUpdates = this.blockchain.resync((syncedUntil != null) ? syncedUntil : undefined);
+    const accepted = (await syncUpdates.createdContracts).flatMap(doc => [{ index: { _index: 'offers', _id : doc.offer } }, doc]);
+    const { body: bulkResponse1 } = await this.client.bulk({ refresh: 'true', body: accepted });
+    if (bulkResponse1.errors) controlDeErrores(accepted, bulkResponse1);
+
+    const to_be_deleted: (CompletedEvent | CancelledEvent)[] =
+      (await syncUpdates.completedContracts).concat(await syncUpdates.cancelledContracts);
+    const deleted = to_be_deleted.map(doc => Object.create({ delete: { _index: 'offers', _id: doc.offer }}));
+    const { body: bulkResponse2 } = await this.client.bulk({ refresh: 'true', body: deleted });
+    if (bulkResponse2.errors) controlDeErrores(deleted, bulkResponse2);
+  }
+
+  private async getLastBlock(): Promise<number | string | null> {
+    const { body } = await this.client.get({
+      index: 'block',
+      id: '1'
+    });
+    return body.lastBlock
+  }
 }
 
 function controlDeErrores(body: any, bulkResponse: any) {
@@ -28,24 +66,6 @@ function controlDeErrores(body: any, bulkResponse: any) {
       }
     })
     console.error(erroredDocuments)
-}
-
-async function asyncStartSyncer(config: Config) {
-    let blockchain = new Blockchain(config.ethereumNode);
-    let syncedUntil = await getLastBlock();
-    let syncUpdates = blockchain.resync((syncedUntil != null) ? syncedUntil : undefined);
-    // Process syncUpdates
-    const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
-
-    const accepted = (await syncUpdates.createdContracts).flatMap(doc => [{ index: { _index: 'offers', _id : doc.offer } }, doc]);
-    const { body: bulkResponse1 } = await client.bulk({ refresh: 'true', body: accepted });
-    if (bulkResponse1.errors) controlDeErrores(accepted, bulkResponse1);
-
-    const to_be_deleted: (CompletedEvent | CancelledEvent)[] =
-      (await syncUpdates.completedContracts).concat(await syncUpdates.cancelledContracts);
-    const deleted = to_be_deleted.map(doc => Object.create({ delete: { _index: 'offers', _id: doc.offer }}));
-    const { body: bulkResponse2 } = await client.bulk({ refresh: 'true', body: deleted});
-    if (bulkResponse2.errors) controlDeErrores(deleted, bulkResponse2);
 }
 
 async function createOffer (index: string, id : string, body: any ) {
@@ -88,14 +108,3 @@ async function completedOffer (index: string, id : string) {
   console.log("Completed.")
 
 }
-
-async function getLastBlock(): Promise<string | number | null> {
-    const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' })
-
-    const { body } = await client.get({
-        index: 'block',
-        id: '1'
-    })
-    return body.lastblock
-}
-
