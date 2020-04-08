@@ -12,10 +12,8 @@ COPY . .
 # C++ extensions (e.g.: Ethereum hash algorithms have an optimized C++ version)
 # Git is needed to download Wallablock dependencies (wb-blockchain, wb-contracts)
 RUN apk add --no-cache --virtual .builddeps python make g++ git \
-    && npm ci \
+    && npm install \
     && apk del .builddeps
-
-RUN npm ci
 
 ENTRYPOINT [ "/sbin/tini", "--" ]
 CMD [ "node", "dist/app.js" ]
