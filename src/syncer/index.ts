@@ -90,9 +90,8 @@ class Syncer {
     let body = [];
     for (let event of buyerRejected) {
       body.push({ index: { _index: 'offers', _id: event.offer }}, {
-        bought: false
-        // NOTE: The buyer will not be removed, but it shall not
-        // be consulted if bought is false.
+        bought: false,
+        buyer: null
       })
       const { body: response } = await this.client.bulk({ refresh: 'true', body });
       if (response.errors) {
@@ -124,7 +123,9 @@ class Syncer {
       price: entry.price,
       category: entry.category,
       shipsFrom: entry.shipsFrom,
-      bought: false
+      bought: false,
+      buyer: null,
+      attachedFiles: ""
     };
   }
 
@@ -138,7 +139,8 @@ class Syncer {
       title: entry.title,
       price: entry.price,
       category: entry.category,
-      shipsFrom: entry.shipsFrom
+      shipsFrom: entry.shipsFrom,
+      attachedFiles: entry.attachedFiles
     };
   }
 
