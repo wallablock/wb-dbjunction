@@ -177,7 +177,7 @@ async function createOffer (index: string, id : string, body: any ) {
     body
   })
 
-  console.log(body._source.firstname)
+  console.log(body._source.offer)
 
 }
 
@@ -188,10 +188,12 @@ async function updateOffer (index: string, id : string, body: any ) {
   await client.update({
     index,
     id,
-    body
+    body: {
+        doc : body
+    }
   })
 
-  console.log(body._source.firstname)
+  console.log(body._source.offer)
 
 }
 
