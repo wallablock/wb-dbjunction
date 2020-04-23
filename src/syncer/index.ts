@@ -19,12 +19,20 @@ class Syncer {
 
   constructor(config: Config) {
     this.blockchain = new Blockchain(config.ethereumNode);
+    let auth;
+    if (config.elasticApiKey != null) {
+      auth = {
+        apiKey: config.elasticApiKey
+      };
+    } else {
+      auth = {
+        username: 'guest',
+        password: 'guest'
+      }
+    }
     this.client = new Client({
       node: config.elasticUrl,
-      auth: {
-        username: config.elasticUsername,
-        password: config.elasticPassword
-      }
+      auth
     });
   }
 
