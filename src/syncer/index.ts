@@ -48,6 +48,47 @@ class Syncer {
       await syncUpdates.completedContracts,
       await syncUpdates.cancelledContracts
     );
+
+    //Al crearse un evento: createOffer, onRevert: completedOffer(borrar), ignoramos errores temp
+    await this.blockchain.onCreated(event => {
+        this.createOffer(event);
+        this.completedOffer(event);
+    })
+
+    //Al completarse un evento: completedOffer, onRevert: createOfferDump(dump), ignoramos errores temp
+    await this.blockchain.onCompleted(event => {
+      this.completedOffer(event);
+      this.createOfferDump(event);
+    })
+
+    //Al modificarse un evento: updateOffer, onRevert: 
+    await this.blockchain.onChanged(event => {
+      this.updateOffer(event);
+      this.updateOfferDump(event);
+    })
+
+    await this.blockchain.onCancelled(event => {
+      this.cancelledOffer(event);
+      this.cancelledOfferDump(event);
+    })
+
+    await this.blockchain.onCancelled(event => {
+      this.cancelledOffer(event);
+      this.cancelledOfferDump(event);
+    })
+
+    //Al tener un evento de comprado, lo tratamos igual que un update pero con menor información. Campos (string)buyer=x y (bool)bought=true
+    await this.blockchain.onBought(event => {
+      this.updateOffer(event);
+      this.onBoughtOfferDump(event);
+    })
+
+    //Al tener un comprador rechazado, lo tratamos igual que un update pero con menor información. Campos (string)buyer="" y (bool)bought=false
+    await this.blockchain.onBuyerRejected(event => {
+      this.onBuyerRejectedOffer(event);
+      this.onBuyerRejectedOfferDump(event);
+    })
+
   }
 
   private async getLastBlock(): Promise<number | string | null> {
@@ -173,47 +214,137 @@ class Syncer {
     });
     throw erroredDocuments;
   }
-}
 
-async function createOffer (index: string, id : string, body: any ) {
+  private async createOffer (entry: CreatedEvent) {
 
-  const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
-
-  await client.index({
-    index,
-    id,
-    body
-  })
-
-  console.log(body._source.offer)
-
-}
-
-async function updateOffer (index: string, id : string, body: any ) {
-
-  const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
-
-  await client.update({
-    index,
-    id,
-    body: {
-        doc : body
+    await this.client.index({
+      index: "offers",
+      id: entry.offer,
+      body: {
+        doc : entry
     }
-  })
+    })
+  }
 
-  console.log(body._source.offer)
+  //dumpOffer retorna la oferta directamente de blockchain. Utilizado en onRevert
+  private async createOfferDump (entry: CompletedEvent) {
+
+    let newEntry :CreatedEvent = this.blockchain.dumpOffer(entry.offer);
+    await this.client.index({
+      index: "offers",
+      id: newEntry.offer,
+      body: {
+        doc : newEntry
+    }
+    })
+  }
+
+  private async updateOffer (entry: ChangedEvent) {
+
+    await this.client.update({
+      index: "offers",
+      id: entry.offer,
+      body: {
+          doc : entry
+      }
+    })
+  }
+
+  private async updateOfferDump (entry: ChangedEvent) {
+
+    let newEntry :CreatedEvent = this.blockchain.dumpOffer(entry.offer);
+    await this.client.index({
+      index: "offers",
+      id: newEntry.offer,
+      body: {
+        doc : newEntry
+    }
+    })
+  }
+
+  private async completedOffer (entry: ChangedEvent) {
+
+    await this.client.delete({
+      index: "offers",
+      id: entry.offer,
+    })
+  
+    console.log("Completed.")
+  
+  }
+
+  //Tiene el mismo tratamiento que completedOffer
+  private async cancelledOffer (entry: ChangedEvent) {
+
+    await this.client.delete({
+      index: "offers",
+      id: entry.offer,
+    })
+  
+    console.log("Completed.")
+  
+  }
+
+  //Tiene el mismo tratamiento que createOfferDump
+  private async cancelledOfferDump (entry: CompletedEvent) {
+
+    let newEntry :CreatedEvent = this.blockchain.dumpOffer(entry.offer);
+    await this.client.index({
+      index: "offers",
+      id: newEntry.offer,
+      body: {
+        doc : newEntry
+    }
+    })
+  }
+
+  //Simplemente hacemos update de los campos necesarios y la bd hará merge de la información
+  private async onBoughtOfferDump (entry: ChangedEvent) {
+
+    await this.client.update({
+      index: "offers",
+      id: entry.offer,
+      body: {
+          doc : {
+            bought:false,
+            buyer: ""
+          }
+      }
+    })
+  }
+
+
+  private async onBuyerRejectedOffer (entry: ChangedEvent) {
+
+    await this.client.update({
+      index: "offers",
+      id: entry.offer,
+      body: {
+          doc : {
+            bought:false,
+            buyer: ""
+          }
+      }
+    })
+  }
+  
+
+  private async onBuyerRejectedOfferDump (entry: ChangedEvent) {
+
+    let newEntry :CreatedEvent = this.blockchain.dumpOffer(entry.offer);
+    await this.client.index({
+      index: "offers",
+      id: newEntry.offer,
+      body: {
+        doc : newEntry
+    }
+    })
+  }
 
 }
 
-async function completedOffer (index: string, id : string) {
 
-  const client = new Client({ node: 'https://sync:wallablocksync@f90c7dc79c2b425caf77079b50ec5677.eu-central-1.aws.cloud.es.io:9243/' });
 
-  const { body } = await client.delete({
-    index,
-    id,
-  })
 
-  console.log("Completed.")
 
-}
+
