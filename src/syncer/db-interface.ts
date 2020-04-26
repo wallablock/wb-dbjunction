@@ -6,7 +6,6 @@ export interface DbEntry {
     category: string,
     shipsFrom: string,
     bought: boolean,
-    buyer: string | null,
     attachedFiles: string
 }
 
@@ -18,7 +17,6 @@ export interface DbUpdate {
     category?: string,
     shipsFrom?: string,
     bought?: boolean,
-    buyer?: string | null,
     attachedFiles?: string
 }
 
