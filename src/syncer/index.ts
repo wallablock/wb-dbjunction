@@ -1,4 +1,4 @@
-import { Blockchain, CompletedEvent, CancelledEvent, CreatedEvent, ChangedEvent, BoughtEvent, BuyerRejectedEvent } from "wb-blockchain";
+import { Blockchain, CompletedEvent, CancelledEvent, CreatedEvent, ChangedEvent, BoughtEvent, BuyerRejectedEvent, BlockchainEvent } from "wb-blockchain";
 import { Config } from "../config";
 import { Client } from "@elastic/elasticsearch";
 import { DbEntry, DbUpdate } from "./db-interface";
@@ -50,17 +50,17 @@ class Syncer {
     );
 
     // Al crearse un evento
-    this.blockchain.onCreated(this.createOffer, this.createOfferRevert);
+    this.blockchain.onCreated(this.createOffer, this.deleteOffer);
     // Al completarse un evento
-    this.blockchain.onCompleted(this.completedOffer, this.completedOfferRevert);
+    this.blockchain.onCompleted(this.deleteOffer, this.restoreFromDump);
     // Al modificarse un evento
-    this.blockchain.onChanged(this.updateOffer, this.updateOfferRevert);
+    this.blockchain.onChanged(this.updateOffer, this.restoreFromDump);
     // Al cancelarse un evento
-    this.blockchain.onCancelled(this.cancelledOffer, this.cancelledOfferRevert);
+    this.blockchain.onCancelled(this.deleteOffer, this.restoreFromDump);
     // Al tener un evento de comprado, lo tratamos igual que un update pero con menor información
-    this.blockchain.onBought(this.onBoughtOffer, this.onBoughtOfferRevert);
+    this.blockchain.onBought(this.setBought, this.unsetBought);
     // Al tener un comprador rechazado, lo tratamos igual que un update pero con menor información
-    this.blockchain.onBuyerRejected(this.onBuyerRejectedOffer, this.onBuyerRejectedOfferRevert);
+    this.blockchain.onBuyerRejected(this.unsetBought, this.setBought);
   }
 
   private async getLastBlock(): Promise<number | string | null> {
@@ -186,8 +186,22 @@ class Syncer {
     throw erroredDocuments;
   }
 
-  private async createOffer (entry: CreatedEvent) {
+  private async restoreFromDump(event: BlockchainEvent) {
+    let newEntry = await this.blockchain.dumpOffer(event.offer);
+    if (newEntry == null) {
+      this.failedToRevert(event.offer);
+      return;
+    }
+    await this.client.index({
+      index: "offers",
+      id: event.offer,
+      body: {
+        doc: newEntry
+      }
+    })
+  }
 
+  private async createOffer (entry: CreatedEvent) {
     await this.client.index({
       index: "offers",
       id: entry.offer,
@@ -197,17 +211,7 @@ class Syncer {
     })
   }
 
-  private async createOfferRevert (entry: CompletedEvent) {
-
-    await this.client.delete({
-      index: "offers",
-      id: entry.offer,
-    })
-
-  }
-
   private async updateOffer (entry: ChangedEvent) {
-
     await this.client.update({
       index: "offers",
       id: entry.offer,
@@ -217,123 +221,38 @@ class Syncer {
     })
   }
 
-  private async updateOfferRevert (entry: ChangedEvent) {
-
-    let newEntry :CreatedEvent = this.blockchain.dumpOffer(entry.offer);
-    await this.client.index({
-      index: "offers",
-      id: newEntry.offer,
-      body: {
-        doc : newEntry
-    }
-    })
-  }
-
-  private async completedOffer (entry: CompletedEvent) {
-
+  private async deleteOffer(event: BlockchainEvent) {
     await this.client.delete({
       index: "offers",
-      id: entry.offer,
-    })
-
-  }
-
-  //dumpOffer retorna la oferta directamente de blockchain. Utilizado en onRevert
-  private async completedOfferRevert (entry: CompletedEvent) {
-
-    let newEntry :CreatedEvent = this.blockchain.dumpOffer(entry.offer);
-    await this.client.index({
-      index: "offers",
-      id: newEntry.offer,
-      body: {
-        doc : newEntry
-    }
+      id: event.offer
     })
   }
 
-  //Tiene el mismo tratamiento que completedOffer
-  private async cancelledOffer (entry: CancelledEvent) {
-
-    await this.client.delete({
-      index: "offers",
-      id: entry.offer,
-    })
-
-  }
-
-  //Tiene el mismo tratamiento que completedOfferDump
-  private async cancelledOfferRevert (entry: CancelledEvent) {
-
-    let newEntry :CreatedEvent = this.blockchain.dumpOffer(entry.offer);
-    await this.client.index({
-      index: "offers",
-      id: newEntry.offer,
-      body: {
-        doc : newEntry
-    }
-    })
-  }
-
-  //Simplemente hacemos update de los campos necesarios y la bd hará merge de la información
-  private async onBoughtOffer (entry: BoughtEvent) {
-
+  private async setBought(event: BlockchainEvent) {
     await this.client.update({
       index: "offers",
-      id: entry.offer,
+      id: event.offer,
       body: {
-          doc : {
-            bought:true,
-          }
+        doc: {
+          bought: true
+        }
       }
-    })
+    });
   }
 
-  //Simplemente hacemos update de los campos necesarios y la bd hará merge de la información
-  private async onBoughtOfferRevert (entry: BoughtEvent) {
-
+  private async unsetBought(event: BlockchainEvent) {
     await this.client.update({
       index: "offers",
-      id: entry.offer,
+      id: event.offer,
       body: {
-          doc : {
-            bought:false,
-          }
+        doc: {
+          bought: false
+        }
       }
-    })
+    });
   }
 
-
-  private async onBuyerRejectedOffer (entry: BuyerRejectedEvent) {
-
-    await this.client.update({
-      index: "offers",
-      id: entry.offer,
-      body: {
-          doc : {
-            bought:false,
-          }
-      }
-    })
+  private failedToRevert(offerId: string) {
+    console.warn("Failed to revert offer", offerId);
   }
-
-
-  private async onBuyerRejectedOfferRevert (entry: BuyerRejectedEvent) {
-
-    await this.client.update({
-      index: "offers",
-      id: entry.offer,
-      body: {
-          doc : {
-            bought:true,
-          }
-      }
-    })
-  }
-
 }
-
-
-
-
-
-
