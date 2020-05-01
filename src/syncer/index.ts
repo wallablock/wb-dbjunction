@@ -49,46 +49,18 @@ class Syncer {
       await syncUpdates.cancelledContracts
     );
 
-    //Al crearse un evento: createOffer, onRevert: completedOffer(borrar), ignoramos errores temp
-    await this.blockchain.onCreated(event => {
-        this.createOffer(event);
-        this.createOfferRevert(event);
-    })
-
-    //Al completarse un evento: completedOffer, onRevert: createOfferDump(dump), ignoramos errores temp
-    await this.blockchain.onCompleted(event => {
-      this.completedOffer(event);
-      this.completedOfferRevert(event);
-    })
-
-    //Al modificarse un evento: updateOffer, onRevert: 
-    await this.blockchain.onChanged(event => {
-      this.updateOffer(event);
-      this.updateOfferRevert(event);
-    })
-
-    await this.blockchain.onCancelled(event => {
-      this.cancelledOffer(event);
-      this.cancelledOfferRevert(event);
-    })
-
-    await this.blockchain.onCancelled(event => {
-      this.cancelledOffer(event);
-      this.cancelledOfferRevert(event);
-    })
-
-    //Al tener un evento de comprado, lo tratamos igual que un update pero con menor información. Campos (string)buyer=x y (bool)bought=true
-    await this.blockchain.onBought(event => {
-      this.onBoughtOffer(event);
-      this.onBoughtOfferRevert(event);
-    })
-
-    //Al tener un comprador rechazado, lo tratamos igual que un update pero con menor información. Campos (string)buyer="" y (bool)bought=false
-    await this.blockchain.onBuyerRejected(event => {
-      this.onBuyerRejectedOffer(event);
-      this.onBuyerRejectedOfferRevert(event);
-    })
-
+    // Al crearse un evento
+    this.blockchain.onCreated(this.createOffer, this.createOfferRevert);
+    // Al completarse un evento
+    this.blockchain.onCompleted(this.completedOffer, this.completedOfferRevert);
+    // Al modificarse un evento
+    this.blockchain.onChanged(this.updateOffer, this.updateOfferRevert);
+    // Al cancelarse un evento
+    this.blockchain.onCancelled(this.cancelledOffer, this.cancelledOfferRevert);
+    // Al tener un evento de comprado, lo tratamos igual que un update pero con menor información
+    this.blockchain.onBought(this.onBoughtOffer, this.onBoughtOfferRevert);
+    // Al tener un comprador rechazado, lo tratamos igual que un update pero con menor información
+    this.blockchain.onBuyerRejected(this.onBuyerRejectedOffer, this.onBuyerRejectedOfferRevert);
   }
 
   private async getLastBlock(): Promise<number | string | null> {
@@ -231,7 +203,7 @@ class Syncer {
       index: "offers",
       id: entry.offer,
     })
-  
+
   }
 
   private async updateOffer (entry: ChangedEvent) {
@@ -263,7 +235,7 @@ class Syncer {
       index: "offers",
       id: entry.offer,
     })
-  
+
   }
 
   //dumpOffer retorna la oferta directamente de blockchain. Utilizado en onRevert
@@ -286,7 +258,7 @@ class Syncer {
       index: "offers",
       id: entry.offer,
     })
-  
+
   }
 
   //Tiene el mismo tratamiento que completedOfferDump
@@ -343,7 +315,7 @@ class Syncer {
       }
     })
   }
-  
+
 
   private async onBuyerRejectedOfferRevert (entry: BuyerRejectedEvent) {
 
