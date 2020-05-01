@@ -1,16 +1,24 @@
-import { Blockchain, CompletedEvent, CancelledEvent, CreatedEvent, ChangedEvent, BoughtEvent, BuyerRejectedEvent, BlockchainEvent } from "wb-blockchain";
+import {
+  Blockchain,
+  CompletedEvent,
+  CancelledEvent,
+  CreatedEvent,
+  ChangedEvent,
+  BoughtEvent,
+  BuyerRejectedEvent,
+  BlockchainEvent,
+} from "wb-blockchain";
 import { Config } from "../config";
 import { Client } from "@elastic/elasticsearch";
 import { DbEntry, DbUpdate } from "./db-interface";
 
 export function startSyncer(config: Config, dieOnFail: boolean = true) {
-    (new Syncer(config)).start()
-      .catch(err => {
-        console.error("Fatal error syncing with the blockchain:", err);
-        if (dieOnFail) {
-          process.exit(1);
-        }
-      });
+  new Syncer(config).start().catch((err) => {
+    console.error("Fatal error syncing with the blockchain:", err);
+    if (dieOnFail) {
+      process.exit(1);
+    }
+  });
 }
 
 class Syncer {
@@ -22,23 +30,25 @@ class Syncer {
     let auth;
     if (config.elasticApiKey != null) {
       auth = {
-        apiKey: config.elasticApiKey
+        apiKey: config.elasticApiKey,
       };
     } else {
       auth = {
-        username: 'guest',
-        password: 'guest'
-      }
+        username: "guest",
+        password: "guest",
+      };
     }
     this.client = new Client({
       node: config.elasticUrl,
-      auth
+      auth,
     });
   }
 
   public async start() {
     let syncedUntil = await this.getLastBlock();
-    let syncUpdates = this.blockchain.resync((syncedUntil != null) ? syncedUntil : undefined);
+    let syncUpdates = this.blockchain.resync(
+      syncedUntil != null ? syncedUntil : undefined
+    );
 
     await this.handleCreated(await syncUpdates.createdContracts);
     await this.handleChanged(await syncUpdates.changedContracts);
@@ -49,34 +59,35 @@ class Syncer {
       await syncUpdates.cancelledContracts
     );
 
-    // Al crearse un evento
     this.blockchain.onCreated(this.createOffer, this.deleteOffer);
-    // Al completarse un evento
     this.blockchain.onCompleted(this.deleteOffer, this.restoreFromDump);
-    // Al modificarse un evento
     this.blockchain.onChanged(this.updateOffer, this.restoreFromDump);
-    // Al cancelarse un evento
     this.blockchain.onCancelled(this.deleteOffer, this.restoreFromDump);
-    // Al tener un evento de comprado, lo tratamos igual que un update pero con menor información
     this.blockchain.onBought(this.setBought, this.unsetBought);
-    // Al tener un comprador rechazado, lo tratamos igual que un update pero con menor información
     this.blockchain.onBuyerRejected(this.unsetBought, this.setBought);
   }
 
   private async getLastBlock(): Promise<number | string | null> {
-    const { body: { lastBlock: lb } } = await this.client.get({
-      index: 'block',
-      id: '1'
-    });
-    return lb
+    return (
+      await this.client.get({
+        index: "block",
+        id: "1",
+      })
+    ).body.lastBlock;
   }
 
   private async handleCreated(created: CreatedEvent[]) {
     let body = [];
     for (let event of created) {
-      body.push({ index: { _index: 'offers', _id: event.offer }}, this.createdToDbEntry(event));
+      body.push(
+        { index: { _index: "offers", _id: event.offer } },
+        this.createdToDbEntry(event)
+      );
     }
-    const { body: response } = await this.client.bulk({ refresh: 'true', body });
+    const { body: response } = await this.client.bulk({
+      refresh: "true",
+      body,
+    });
     if (response.errors) {
       this.onElasticBulkError(body, response);
     }
@@ -85,9 +96,15 @@ class Syncer {
   private async handleChanged(changed: ChangedEvent[]) {
     let body = [];
     for (let event of changed) {
-      body.push({ index: { _index: 'offers', _id: event.offer }}, this.changedToDbUpdate(event));
+      body.push(
+        { index: { _index: "offers", _id: event.offer } },
+        this.changedToDbUpdate(event)
+      );
     }
-    const { body: response } = await this.client.bulk({ refresh: 'true', body });
+    const { body: response } = await this.client.bulk({
+      refresh: "true",
+      body,
+    });
     if (response.errors) {
       this.onElasticBulkError(body, response);
     }
@@ -96,12 +113,18 @@ class Syncer {
   private async handleBought(bought: BoughtEvent[]) {
     let body = [];
     for (let event of bought) {
-      body.push({ index: { _index: 'offers', _id: event.offer }}, {
-        bought: true,
-        buyer: event.buyer
-      });
+      body.push(
+        { index: { _index: "offers", _id: event.offer } },
+        {
+          bought: true,
+          buyer: event.buyer,
+        }
+      );
     }
-    const { body: response } = await this.client.bulk({ refresh: 'true', body });
+    const { body: response } = await this.client.bulk({
+      refresh: "true",
+      body,
+    });
     if (response.errors) {
       this.onElasticBulkError(body, response);
     }
@@ -110,23 +133,35 @@ class Syncer {
   private async handleBuyerRejected(buyerRejected: BuyerRejectedEvent[]) {
     let body = [];
     for (let event of buyerRejected) {
-      body.push({ index: { _index: 'offers', _id: event.offer }}, {
-        bought: false,
-        buyer: null
-      })
-      const { body: response } = await this.client.bulk({ refresh: 'true', body });
+      body.push(
+        { index: { _index: "offers", _id: event.offer } },
+        {
+          bought: false,
+          buyer: null,
+        }
+      );
+      const { body: response } = await this.client.bulk({
+        refresh: "true",
+        body,
+      });
       if (response.errors) {
         this.onElasticBulkError(body, response);
       }
     }
   }
 
-  private async handleDeleted(completed: CompletedEvent[], cancelled: CancelledEvent[]) {
+  private async handleDeleted(
+    completed: CompletedEvent[],
+    cancelled: CancelledEvent[]
+  ) {
     let body = [];
     for (let event of [...completed, ...cancelled]) {
-      body.push({ delete: { _index: 'offers', _id: event.offer }});
+      body.push({ delete: { _index: "offers", _id: event.offer } });
     }
-    const { body: response } = await this.client.bulk({ refresh: 'true', body });
+    const { body: response } = await this.client.bulk({
+      refresh: "true",
+      body,
+    });
     if (response.errors) {
       this.onElasticBulkError(body, response);
     }
@@ -145,7 +180,7 @@ class Syncer {
       category: entry.category,
       shipsFrom: entry.shipsFrom,
       bought: false,
-      attachedFiles: ""
+      attachedFiles: "",
     };
   }
 
@@ -160,7 +195,7 @@ class Syncer {
       price: entry.price,
       category: entry.category,
       shipsFrom: entry.shipsFrom,
-      attachedFiles: entry.attachedFiles
+      attachedFiles: entry.attachedFiles,
     };
   }
 
@@ -179,7 +214,7 @@ class Syncer {
           status: action[operation].status,
           error: action[operation].error,
           operation: body[i * 2],
-          document: body[i * 2 + 1]
+          document: body[i * 2 + 1],
         });
       }
     });
@@ -196,36 +231,36 @@ class Syncer {
       index: "offers",
       id: event.offer,
       body: {
-        doc: newEntry
-      }
-    })
+        doc: newEntry,
+      },
+    });
   }
 
-  private async createOffer (entry: CreatedEvent) {
+  private async createOffer(entry: CreatedEvent) {
     await this.client.index({
       index: "offers",
       id: entry.offer,
       body: {
-        doc : entry
-    }
-    })
+        doc: entry,
+      },
+    });
   }
 
-  private async updateOffer (entry: ChangedEvent) {
+  private async updateOffer(entry: ChangedEvent) {
     await this.client.update({
       index: "offers",
       id: entry.offer,
       body: {
-          doc : entry
-      }
-    })
+        doc: entry,
+      },
+    });
   }
 
   private async deleteOffer(event: BlockchainEvent) {
     await this.client.delete({
       index: "offers",
-      id: event.offer
-    })
+      id: event.offer,
+    });
   }
 
   private async setBought(event: BlockchainEvent) {
@@ -234,9 +269,9 @@ class Syncer {
       id: event.offer,
       body: {
         doc: {
-          bought: true
-        }
-      }
+          bought: true,
+        },
+      },
     });
   }
 
@@ -246,9 +281,9 @@ class Syncer {
       id: event.offer,
       body: {
         doc: {
-          bought: false
-        }
-      }
+          bought: false,
+        },
+      },
     });
   }
 
