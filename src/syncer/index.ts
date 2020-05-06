@@ -65,6 +65,9 @@ class Syncer {
     this.blockchain.onCancelled(this.deleteOffer, this.restoreFromDump);
     this.blockchain.onBought(this.setBought, this.unsetBought);
     this.blockchain.onBuyerRejected(this.unsetBought, this.setBought);
+    let nlastblock = funcionlastblock(); //Cambiar por funcion que retorne el bloque actual
+    setInterval(this.updateLastBlock, 900000, nlastblock);
+    
   }
 
   private async getLastBlock(): Promise<number | string | null> {
@@ -290,4 +293,17 @@ class Syncer {
   private failedToRevert(offerId: string) {
     console.warn("Failed to revert offer", offerId);
   }
+
+  private async updateLastBlock(lastBlock: Number){
+    await this.client.update({
+      index: "lastblock",
+      id: "1",
+      body: {
+        doc: {
+          lastblock: lastBlock,
+        },
+      },
+    })
+  }
+
 }
