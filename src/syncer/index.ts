@@ -24,6 +24,7 @@ export function startSyncer(config: Config, dieOnFail: boolean = true) {
 class Syncer {
   private blockchain: Blockchain;
   private client: Client;
+  private lastBlock: number | null;
 
   constructor(config: Config) {
     this.blockchain = new Blockchain(config.ethereumNode);
@@ -42,12 +43,13 @@ class Syncer {
       node: config.elasticUrl,
       auth,
     });
+    this.lastBlock = null;
   }
 
   public async start() {
-    let syncedUntil = await this.getLastBlock();
+    this.lastBlock = await this.getLastBlock();
     let syncUpdates = this.blockchain.resync(
-      syncedUntil != null ? syncedUntil : undefined
+      this.lastBlock != null ? this.lastBlock : undefined
     );
 
     await this.handleCreated(await syncUpdates.createdContracts);
@@ -65,18 +67,37 @@ class Syncer {
     this.blockchain.onCancelled(this.deleteOffer, this.restoreFromDump);
     this.blockchain.onBought(this.setBought, this.unsetBought);
     this.blockchain.onBuyerRejected(this.unsetBought, this.setBought);
-    let nlastblock = funcionlastblock(); //Cambiar por funcion que retorne el bloque actual
-    setInterval(this.updateLastBlock, 900000, nlastblock);
-    
   }
 
-  private async getLastBlock(): Promise<number | string | null> {
+  private async getLastBlock(): Promise<number | null> {
     return (
       await this.client.get({
         index: "block",
         id: "1",
       })
     ).body.lastBlock;
+  }
+
+  private async checkLastBlock(currBlock: number | null) {
+    if (currBlock == null) {
+      return;
+    }
+    if (this.lastBlock != null && currBlock <= this.lastBlock) {
+      return;
+    }
+    await this.updateLastBlock(currBlock);
+  }
+
+  private async updateLastBlock(lastBlock: number) {
+    await this.client.update({
+      index: "lastblock",
+      id: "1",
+      body: {
+        doc: {
+          lastblock: lastBlock,
+        },
+      },
+    });
   }
 
   private async handleCreated(created: CreatedEvent[]) {
@@ -239,7 +260,7 @@ class Syncer {
     });
   }
 
-  private async createOffer(entry: CreatedEvent) {
+  private async createOffer(entry: CreatedEvent, block: number | null) {
     await this.client.index({
       index: "offers",
       id: entry.offer,
@@ -247,9 +268,10 @@ class Syncer {
         doc: entry,
       },
     });
+    await this.checkLastBlock(block);
   }
 
-  private async updateOffer(entry: ChangedEvent) {
+  private async updateOffer(entry: ChangedEvent, block: number | null = null) {
     await this.client.update({
       index: "offers",
       id: entry.offer,
@@ -257,16 +279,21 @@ class Syncer {
         doc: entry,
       },
     });
+    await this.checkLastBlock(block);
   }
 
-  private async deleteOffer(event: BlockchainEvent) {
+  private async deleteOffer(
+    event: BlockchainEvent,
+    block: number | null = null
+  ) {
     await this.client.delete({
       index: "offers",
       id: event.offer,
     });
+    await this.checkLastBlock(block);
   }
 
-  private async setBought(event: BlockchainEvent) {
+  private async setBought(event: BlockchainEvent, block: number | null = null) {
     await this.client.update({
       index: "offers",
       id: event.offer,
@@ -276,9 +303,13 @@ class Syncer {
         },
       },
     });
+    await this.checkLastBlock(block);
   }
 
-  private async unsetBought(event: BlockchainEvent) {
+  private async unsetBought(
+    event: BlockchainEvent,
+    block: number | null = null
+  ) {
     await this.client.update({
       index: "offers",
       id: event.offer,
@@ -288,22 +319,10 @@ class Syncer {
         },
       },
     });
+    await this.checkLastBlock(block);
   }
 
   private failedToRevert(offerId: string) {
     console.warn("Failed to revert offer", offerId);
   }
-
-  private async updateLastBlock(lastBlock: Number){
-    await this.client.update({
-      index: "lastblock",
-      id: "1",
-      body: {
-        doc: {
-          lastblock: lastBlock,
-        },
-      },
-    })
-  }
-
 }
