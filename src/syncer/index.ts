@@ -90,11 +90,11 @@ class Syncer {
 
   private async updateLastBlock(lastBlock: number) {
     await this.client.update({
-      index: "lastblock",
+      index: "block",
       id: "1",
       body: {
         doc: {
-          lastblock: lastBlock,
+          lastBlock,
         },
       },
     });
