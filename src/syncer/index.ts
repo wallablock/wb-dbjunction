@@ -47,7 +47,9 @@ class Syncer {
   }
 
   public async start() {
+    console.log("Started");
     this.lastBlock = await this.getLastBlock();
+    console.log("Last block:", this.lastBlock);
     let syncUpdates = this.blockchain.resync(
       this.lastBlock != null ? this.lastBlock : undefined
     );
@@ -67,6 +69,7 @@ class Syncer {
     this.blockchain.onCancelled(this.deleteOffer, this.restoreFromDump);
     this.blockchain.onBought(this.setBought, this.unsetBought);
     this.blockchain.onBuyerRejected(this.unsetBought, this.setBought);
+    console.log("Resync finished");
   }
 
   private async getLastBlock(): Promise<number | null> {
@@ -101,6 +104,7 @@ class Syncer {
   }
 
   private async handleCreated(created: CreatedEvent[]) {
+    console.log("RESYNC Created:", created);
     let body = [];
     if (body.length === 0) { return; }
     for (let event of created) {
@@ -119,6 +123,7 @@ class Syncer {
   }
 
   private async handleChanged(changed: ChangedEvent[]) {
+    console.log("RESYNC Changed:", changed);
     let body = [];
     if (body.length === 0) { return; }
     for (let event of changed) {
@@ -137,6 +142,7 @@ class Syncer {
   }
 
   private async handleBought(bought: BoughtEvent[]) {
+    console.log("RESYNC Bought:", bought);
     let body = [];
     if (body.length === 0) { return; }
     for (let event of bought) {
@@ -158,6 +164,7 @@ class Syncer {
   }
 
   private async handleBuyerRejected(buyerRejected: BuyerRejectedEvent[]) {
+    console.log("RESYNC Buyer rejected:", buyerRejected);
     let body = [];
     if (body.length === 0) { return; }
     for (let event of buyerRejected) {
@@ -182,6 +189,8 @@ class Syncer {
     completed: CompletedEvent[],
     cancelled: CancelledEvent[]
   ) {
+    console.log("RESYNC Completed:", completed);
+    console.log("RESYNC Cancelled:", cancelled);
     let body = [];
     if (body.length === 0) { return; }
     for (let event of [...completed, ...cancelled]) {
@@ -266,6 +275,7 @@ class Syncer {
   }
 
   private async createOffer(entry: CreatedEvent, block: number | null) {
+    console.log("CALLBACK Created:", entry);
     await this.client.index({
       index: "offers",
       id: entry.offer,
@@ -277,6 +287,7 @@ class Syncer {
   }
 
   private async updateOffer(entry: ChangedEvent, block: number | null = null) {
+    console.log("CALLBACK Updated:", entry);
     await this.client.update({
       index: "offers",
       id: entry.offer,
@@ -291,6 +302,7 @@ class Syncer {
     event: BlockchainEvent,
     block: number | null = null
   ) {
+    console.log("CALLBACK Deleted:", event);
     await this.client.delete({
       index: "offers",
       id: event.offer,
@@ -299,6 +311,7 @@ class Syncer {
   }
 
   private async setBought(event: BlockchainEvent, block: number | null = null) {
+    console.log("CALLBACK Bought:", event);
     await this.client.update({
       index: "offers",
       id: event.offer,
@@ -315,6 +328,7 @@ class Syncer {
     event: BlockchainEvent,
     block: number | null = null
   ) {
+    console.log("CALLBACK Unbought:", event);
     await this.client.update({
       index: "offers",
       id: event.offer,
