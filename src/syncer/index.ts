@@ -102,6 +102,7 @@ class Syncer {
 
   private async handleCreated(created: CreatedEvent[]) {
     let body = [];
+    if (body.length === 0) { return; }
     for (let event of created) {
       body.push(
         { index: { _index: "offers", _id: event.offer } },
@@ -119,6 +120,7 @@ class Syncer {
 
   private async handleChanged(changed: ChangedEvent[]) {
     let body = [];
+    if (body.length === 0) { return; }
     for (let event of changed) {
       body.push(
         { index: { _index: "offers", _id: event.offer } },
@@ -136,6 +138,7 @@ class Syncer {
 
   private async handleBought(bought: BoughtEvent[]) {
     let body = [];
+    if (body.length === 0) { return; }
     for (let event of bought) {
       body.push(
         { index: { _index: "offers", _id: event.offer } },
@@ -156,6 +159,7 @@ class Syncer {
 
   private async handleBuyerRejected(buyerRejected: BuyerRejectedEvent[]) {
     let body = [];
+    if (body.length === 0) { return; }
     for (let event of buyerRejected) {
       body.push(
         { index: { _index: "offers", _id: event.offer } },
@@ -179,6 +183,7 @@ class Syncer {
     cancelled: CancelledEvent[]
   ) {
     let body = [];
+    if (body.length === 0) { return; }
     for (let event of [...completed, ...cancelled]) {
       body.push({ delete: { _index: "offers", _id: event.offer } });
     }
