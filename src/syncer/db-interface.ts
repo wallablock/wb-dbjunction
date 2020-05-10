@@ -1,5 +1,8 @@
-export interface DbEntry {
+interface DbObject {
   offer: string;
+}
+
+export interface DbEntry extends DbObject {
   seller: string;
   title: string;
   price: string;
@@ -9,17 +12,5 @@ export interface DbEntry {
   attachedFiles: string;
 }
 
-export interface DbUpdate {
-  offer: string;
-  seller?: string;
-  title?: string;
-  price?: string;
-  category?: string;
-  shipsFrom?: string;
-  bought?: boolean;
-  attachedFiles?: string;
-}
-
-export interface DbErase {
-  offer: string;
-}
+type OptionalDbEntry = Partial<Omit<DbEntry, "offer">>;
+export interface DbUpdate extends DbObject, OptionalDbEntry {}
