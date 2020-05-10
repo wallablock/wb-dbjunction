@@ -27,7 +27,7 @@ class Syncer {
   private lastBlock: number | null;
 
   constructor(config: Config) {
-    this.blockchain = new Blockchain("0xBEdE95C1e94434cF2F2897Bbf67EFE91F636E6D1", config.ethereumNode);
+    this.blockchain = new Blockchain(config.registryContract, config.ethereumNode);
     let auth;
     if (config.elasticApiKey != null) {
       auth = {
