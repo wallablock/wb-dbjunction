@@ -88,6 +88,7 @@ class Syncer {
     if (this.lastBlock != null && currBlock <= this.lastBlock) {
       return;
     }
+    this.lastBlock = currBlock;
     await this.updateLastBlock(currBlock);
   }
 
