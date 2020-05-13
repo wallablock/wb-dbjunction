@@ -6,7 +6,7 @@ export interface Config {
 }
 
 const DEFAULT_CONFIG: Config = {
-  ethereumNode: "ws://localhost:8545",
+  ethereumNode: "ws://localhost:8546",
   elasticUrl: "https://localhost:9200",
   elasticApiKey: null,
   registryContract: "",
