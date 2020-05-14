@@ -27,7 +27,10 @@ class Syncer {
   private lastBlock: number | null;
 
   constructor(config: Config) {
-    this.blockchain = new Blockchain(config.registryContract, config.ethereumNode);
+    this.blockchain = new Blockchain(
+      config.registryContract,
+      config.ethereumNode
+    );
     let auth;
     if (config.elasticApiKey != null) {
       auth = {
@@ -125,7 +128,9 @@ class Syncer {
   private async handleCreated(created: CreatedEvent[]) {
     console.log("RESYNC Created:", created);
     let body = [];
-    if (created.length === 0) { return; }
+    if (created.length === 0) {
+      return;
+    }
     for (let event of created) {
       body.push(
         { index: { _index: "offers", _id: event.offer } },
@@ -144,7 +149,9 @@ class Syncer {
   private async handleChanged(changed: ChangedEvent[]) {
     console.log("RESYNC Changed:", changed);
     let body = [];
-    if (changed.length === 0) { return; }
+    if (changed.length === 0) {
+      return;
+    }
     for (let event of changed) {
       body.push(
         { index: { _index: "offers", _id: event.offer } },
@@ -163,7 +170,9 @@ class Syncer {
   private async handleBought(bought: BoughtEvent[]) {
     console.log("RESYNC Bought:", bought);
     let body = [];
-    if (bought.length === 0) { return; }
+    if (bought.length === 0) {
+      return;
+    }
     for (let event of bought) {
       body.push(
         { index: { _index: "offers", _id: event.offer } },
@@ -185,7 +194,9 @@ class Syncer {
   private async handleBuyerRejected(buyerRejected: BuyerRejectedEvent[]) {
     console.log("RESYNC Buyer rejected:", buyerRejected);
     let body = [];
-    if (buyerRejected.length === 0) { return; }
+    if (buyerRejected.length === 0) {
+      return;
+    }
     for (let event of buyerRejected) {
       body.push(
         { index: { _index: "offers", _id: event.offer } },
@@ -212,7 +223,9 @@ class Syncer {
     console.log("RESYNC Cancelled:", cancelled);
     let deleted = [...completed, ...cancelled];
     let body = [];
-    if (deleted.length === 0) { return; }
+    if (deleted.length === 0) {
+      return;
+    }
     for (let event of deleted) {
       body.push({ delete: { _index: "offers", _id: event.offer } });
     }
