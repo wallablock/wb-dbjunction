@@ -99,7 +99,7 @@ class Syncer {
         index: "block",
         id: "1",
       })
-    ).body.lastBlock;
+    ).body._source.lastBlock;
   }
 
   private async checkLastBlock(currBlock: number | null) {
