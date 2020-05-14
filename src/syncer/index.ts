@@ -63,12 +63,30 @@ class Syncer {
       await syncUpdates.cancelledContracts
     );
 
-    this.blockchain.onCreated(this.createOffer, this.deleteOffer);
-    this.blockchain.onCompleted(this.deleteOffer, this.restoreFromDump);
-    this.blockchain.onChanged(this.updateOffer, this.restoreFromDump);
-    this.blockchain.onCancelled(this.deleteOffer, this.restoreFromDump);
-    this.blockchain.onBought(this.setBought, this.unsetBought);
-    this.blockchain.onBuyerRejected(this.unsetBought, this.setBought);
+    this.blockchain.onCreated(
+      (...args) => this.createOffer(...args),
+      (...args) => this.deleteOffer(...args)
+    );
+    this.blockchain.onCompleted(
+      (...args) => this.deleteOffer(...args),
+      (...args) => this.restoreFromDump(...args)
+    );
+    this.blockchain.onChanged(
+      (...args) => this.updateOffer(...args),
+      (...args) => this.restoreFromDump(...args)
+    );
+    this.blockchain.onCancelled(
+      (...args) => this.deleteOffer(...args),
+      (...args) => this.restoreFromDump(...args)
+    );
+    this.blockchain.onBought(
+      (...args) => this.setBought(...args),
+      (...args) => this.unsetBought(...args)
+    );
+    this.blockchain.onBuyerRejected(
+      (...args) => this.unsetBought(...args),
+      (...args) => this.setBought(...args)
+    );
     console.log("Resync finished");
   }
 
