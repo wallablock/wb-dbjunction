@@ -154,7 +154,7 @@ class Syncer {
     }
     for (let event of changed) {
       body.push(
-        { index: { _index: "offers", _id: event.offer } },
+        { update: { _index: "offers", _id: event.offer } },
         this.changedToDbUpdate(event)
       );
     }
@@ -175,7 +175,7 @@ class Syncer {
     }
     for (let event of bought) {
       body.push(
-        { index: { _index: "offers", _id: event.offer } },
+        { update: { _index: "offers", _id: event.offer } },
         {
           bought: true,
           buyer: event.buyer,
@@ -199,7 +199,7 @@ class Syncer {
     }
     for (let event of buyerRejected) {
       body.push(
-        { index: { _index: "offers", _id: event.offer } },
+        { update: { _index: "offers", _id: event.offer } },
         {
           bought: false,
           buyer: null,
