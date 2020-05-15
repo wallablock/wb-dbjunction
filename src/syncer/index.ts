@@ -154,10 +154,11 @@ class Syncer {
     }
     for (let event of changed) {
       body.push(
-        { update: { _index: "offers", _id: event.offer } },
-        this.changedToDbUpdate(event)
+        { update: { _id: event.offer, _index: "offers" } },
+        { doc: this.changedToDbUpdate(event) }
       );
     }
+
     const { body: response } = await this.client.bulk({
       refresh: "true",
       body,
@@ -175,10 +176,12 @@ class Syncer {
     }
     for (let event of bought) {
       body.push(
-        { update: { _index: "offers", _id: event.offer } },
+        { update: { _id: event.offer, _index: "offers" } },
         {
-          bought: true,
-          buyer: event.buyer,
+          doc: {
+            bought: true,
+            buyer: event.buyer,
+          },
         }
       );
     }
@@ -199,10 +202,12 @@ class Syncer {
     }
     for (let event of buyerRejected) {
       body.push(
-        { update: { _index: "offers", _id: event.offer } },
+        { update: { _id: event.offer, _index: "offers" } },
         {
-          bought: false,
-          buyer: null,
+          doc: {
+            bought: false,
+            buyer: null,
+          },
         }
       );
       const { body: response } = await this.client.bulk({
