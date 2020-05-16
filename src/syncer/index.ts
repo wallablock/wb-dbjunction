@@ -7,7 +7,7 @@ import {
   BoughtEvent,
   BuyerRejectedEvent,
   BlockchainEvent,
-  priceToEth
+  priceToEth,
 } from "wb-blockchain";
 import { Config } from "../config";
 import { Client } from "@elastic/elasticsearch";
@@ -28,6 +28,8 @@ class Syncer {
   private lastBlock: number | null;
 
   constructor(config: Config) {
+    // Temporary workaround
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     this.blockchain = new Blockchain(
       config.registryContract,
       config.ethereumNode
@@ -269,7 +271,7 @@ class Syncer {
     return {
       offer: entry.offer,
       title: entry.title,
-      price: (entry.price != undefined) ? priceToEth(entry.price) : undefined,
+      price: entry.price != undefined ? priceToEth(entry.price) : undefined,
       category: entry.category,
       shipsFrom: entry.shipsFrom,
       attachedFiles: entry.attachedFiles,
