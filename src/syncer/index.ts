@@ -7,6 +7,7 @@ import {
   BoughtEvent,
   BuyerRejectedEvent,
   BlockchainEvent,
+  priceToEth
 } from "wb-blockchain";
 import { Config } from "../config";
 import { Client } from "@elastic/elasticsearch";
@@ -252,11 +253,11 @@ class Syncer {
       offer: entry.offer,
       seller: entry.seller,
       title: entry.title,
-      price: entry.price,
+      price: priceToEth(entry.price),
       category: entry.category,
       shipsFrom: entry.shipsFrom,
       bought: false,
-      attachedFiles: "",
+      attachedFiles: entry.attachedFiles,
     };
   }
 
@@ -268,7 +269,7 @@ class Syncer {
     return {
       offer: entry.offer,
       title: entry.title,
-      price: entry.price,
+      price: (entry.price != undefined) ? priceToEth(entry.price) : undefined,
       category: entry.category,
       shipsFrom: entry.shipsFrom,
       attachedFiles: entry.attachedFiles,
