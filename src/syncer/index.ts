@@ -321,7 +321,7 @@ class Syncer {
       index: "offers",
       id: entry.offer,
       body: {
-        doc: entry,
+        doc: this.createdToDbEntry(entry),
       },
     });
     await this.checkLastBlock(block);
@@ -333,7 +333,7 @@ class Syncer {
       index: "offers",
       id: entry.offer,
       body: {
-        doc: entry,
+        doc: this.changedToDbUpdate(entry),
       },
     });
     await this.checkLastBlock(block);
