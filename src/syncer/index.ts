@@ -69,6 +69,8 @@ class Syncer {
       await syncUpdates.cancelledContracts
     );
 
+    await this.checkLastBlock(await syncUpdates.syncedToBlock);
+
     this.blockchain.onCreated(
       (...args) => this.createOffer(...args),
       (...args) => this.deleteOffer(...args)
@@ -255,7 +257,7 @@ class Syncer {
       offer: entry.offer,
       seller: entry.seller,
       title: entry.title,
-      price: priceToEth(entry.price),
+      price: +priceToEth(entry.price),
       category: entry.category,
       shipsFrom: entry.shipsFrom,
       bought: false,
@@ -271,7 +273,7 @@ class Syncer {
     return {
       offer: entry.offer,
       title: entry.title,
-      price: entry.price != undefined ? priceToEth(entry.price) : undefined,
+      price: entry.price != undefined ? +priceToEth(entry.price) : undefined,
       category: entry.category,
       shipsFrom: entry.shipsFrom,
       attachedFiles: entry.attachedFiles,
