@@ -322,9 +322,7 @@ class Syncer {
     await this.client.index({
       index: "offers",
       id: entry.offer,
-      body: {
-        doc: this.createdToDbEntry(entry),
-      },
+      body: this.createdToDbEntry(entry)
     });
     await this.checkLastBlock(block);
   }
